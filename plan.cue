@@ -1,36 +1,38 @@
-package main
+package test_deploy
 
 import (
     "dagger.io/dagger"
-    "dagger.io/dagger/core"
+    "universe.dagger.io/bash"
+    "universe.dagger.io/docker"
 )
 
-// Write a greeting to a file, and add it to a directory
-#AddHello: {
-    // The input directory
-    dir: dagger.#FS
-
-    // The name of the person to greet
-    name: string | *"world"
-
-    write: core.#WriteFile & {
-        input: dir
-        path: "hello-\(name).txt"
-        contents: "hello, \(name)!"
-    }
-
-    // The directory with greeting message added
-    result: write.output
-}
-
 dagger.#Plan & {
-    // Say hello by writing to a file
-    actions: hello: #AddHello & {
-        dir: client.filesystem.".".read.contents
+    client: env: {
+        package_name: string
     }
 
-    client: filesystem: ".": {
-        read: contents: dagger.#FS
-        write: contents: actions.hello.result
+    actions: {
+        Package: {
+            Deps: docker.#Pull & {
+                source: "ubuntu:20.04"
+            }
+
+            Build: bash.#Run & {
+                input: Deps.output
+
+                always: true
+                script:
+                    contents: "sleep 20"
+            }
+        }
+
+        E2E: {
+            CreateVM: bash.#Run & {
+                always: true
+
+                script:
+                    contents: "sleep 20"
+            }
+        }
     }
 }
